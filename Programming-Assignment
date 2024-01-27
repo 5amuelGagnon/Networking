@@ -1,0 +1,144 @@
+// Client side
+
+import java.io.*;
+import java.net.Socket;
+import java.util.Scanner;
+
+public class Client {
+    public static void main(String[] args) {
+
+        Socket socket;
+        InputStreamReader inputStreamReader;
+        OutputStreamWriter outputStreamWriter;
+        BufferedReader bufferedReader;
+        BufferedWriter bufferedWriter;
+
+        try {
+            socket = new Socket("localhost", 431);
+
+            inputStreamReader = new InputStreamReader(socket.getInputStream());
+            outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+            bufferedReader = new BufferedReader(inputStreamReader);
+            bufferedWriter = new BufferedWriter(outputStreamWriter);
+
+            Scanner scanner = new Scanner(System.in);
+
+            while (true) {
+
+                String msgToServer = scanner.nextLine();
+                bufferedWriter.write(msgToServer);
+                bufferedWriter.newLine();
+                bufferedWriter.flush();
+
+                System.out.println("SERVER: " + bufferedReader.readLine());
+
+                switch (msgToServer.toUpperCase()) {
+                    case "BYE":
+                    case "EXIT":
+                    case "QUIT":
+                        return;
+                    default:
+                        break;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("FATAL ERROR: " + e.getMessage());
+        }
+    }
+}
+
+------------------------------------------------------------------------------------------
+
+// Server side
+
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
+
+public class Server {
+    public static void main(String[] args) throws IOException {
+
+        Socket socket;
+        InputStreamReader inputStreamReader;
+        OutputStreamWriter outputStreamWriter;
+        BufferedReader bufferedReader;
+        BufferedWriter bufferedWriter;
+        ServerSocket serverSocket;
+
+        serverSocket = new ServerSocket(431);
+
+        while (true) {
+
+            try {
+                socket = serverSocket.accept();
+
+                inputStreamReader = new InputStreamReader(socket.getInputStream());
+                outputStreamWriter = new OutputStreamWriter(socket.getOutputStream());
+
+                bufferedReader = new BufferedReader(inputStreamReader);
+                bufferedWriter = new BufferedWriter(outputStreamWriter);
+
+
+                System.out.println("Connection established on port " + socket.getLocalPort() + ".");
+
+
+                while (true) {
+
+                    String msgFromClient = bufferedReader.readLine();
+
+                    System.out.println("CLIENT: " + msgFromClient.toUpperCase());
+
+
+                    if (msgFromClient.equalsIgnoreCase("BREW")) {
+                        bufferedWriter.write("300 What is the magic word?");
+                        bufferedWriter.newLine();
+                        bufferedWriter.flush();
+                    } else if (msgFromClient.equalsIgnoreCase("BREW PLEASE")) {
+                        bufferedWriter.write("301 Sorry, better start a conversation with greeting.");
+                        bufferedWriter.newLine();
+                        bufferedWriter.flush();
+                    } else {
+                        switch (msgFromClient.toUpperCase()) {
+                            case "HELLO" -> {
+                                bufferedWriter.write("HELLO, " + socket.getRemoteSocketAddress() + ". How may I help you?");
+                                bufferedWriter.newLine();
+                                bufferedWriter.flush();
+                            }
+                            case "BREW TEA", "BREW COFFEE" -> {
+                                bufferedWriter.write("200 OK Brewing");
+                                bufferedWriter.newLine();
+                                bufferedWriter.flush();
+                            }
+                            case "STATUS" -> {
+                                serverSocket.setSoTimeout(1000);
+                                bufferedWriter.write("STATUS: " + serverSocket.getSoTimeout()/1000 + " SECOND(S).");
+                                bufferedWriter.newLine();
+                                bufferedWriter.flush();
+                            }
+                            case "BYE", "EXIT", "QUIT" -> {
+                                bufferedWriter.write("BYE, nice serving you.");
+                                bufferedWriter.newLine();
+                                bufferedWriter.flush();
+                                socket.close();
+                                inputStreamReader.close();
+                                outputStreamWriter.close();
+                                bufferedReader.close();
+                                bufferedWriter.close();
+                            }
+                            default -> {
+                                bufferedWriter.write("ERR Sorry did not understand. Say BYE if you wish to exit.");
+                                bufferedWriter.newLine();
+                                bufferedWriter.flush();
+                            }
+                        }
+                    }
+
+                }
+
+            } catch (IOException  e) {
+                System.out.println("FATAL ERROR: " + e.getMessage());
+            }
+        }
+    }
+}
